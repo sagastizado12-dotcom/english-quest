@@ -72,3 +72,4 @@ nav#tabs a{font-size:20px;padding-top:6px}
 .esu{white-space:normal;overflow-wrap:anywhere}
 nav#tabs a{min-width:0;overflow:hidden}nav#tabs a span,nav#tabs a .esn{overflow-wrap:anywhere}
 .grid2>*{min-width:0}
+.mic{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}

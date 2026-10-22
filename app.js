@@ -60,15 +60,29 @@ const slow = t => speak(t, 0.55);
 /* ========== Speech recognition with graceful fallback ========== */
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 const srReady = () => !!SR && navigator.onLine;
-function listen() {
+// Better capture: 5 alternatives, interim transcript, longer silence window,
+// auto-restart if recognition ends before any speech, optional hold-to-talk.
+function listen(opts = {}) {
   return new Promise((res, rej) => {
-    const r = new SR(); r.lang = 'en-US'; r.interimResults = false; r.maxAlternatives = 3; let done = false;
-    r.onresult = e => { done = true; res([...e.results[0]].map(a => a.transcript)); };
-    r.onerror = e => { done = true; rej(e.error || 'error'); };
-    r.onend = () => { if (!done) rej('no-speech'); };
-    const to = setTimeout(() => { if (!done) { done = true; try { r.abort(); } catch {} rej('timeout'); } }, 9000);
-    r.addEventListener('end', () => clearTimeout(to));
-    try { r.start(); } catch (e) { done = true; rej('start-failed'); }
+    const segs = []; let lastInterim = ''; let done = false, heardAny = false, restarts = 0, r = null; const t0 = Date.now();
+    const finish = () => { if (done) return; done = true; clearTimeout(to); if (!segs.length && lastInterim) segs.push([lastInterim]); if (!segs.length) return rej(heardAny ? 'no-match' : 'no-speech');
+      const prefix = segs.slice(0, -1).map(a => a[0]).join(' '); res(segs[segs.length - 1].map(a => (prefix + ' ' + a).trim())); };
+    const to = setTimeout(() => { if (!done) { try { r && r.abort(); } catch {} if (segs.length) finish(); else { done = true; rej('timeout'); } } }, opts.maxMs || 15000);
+    const start = () => {
+      r = new SR(); r.lang = 'en-US'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = !!opts.hold;
+      r.onresult = e => { heardAny = true; let interim = '';
+        for (let k = e.resultIndex; k < e.results.length; k++) { const rr = e.results[k];
+          if (rr.isFinal) segs.push([...rr].map(a => a.transcript)); else interim += rr[0].transcript; }
+        lastInterim = interim || lastInterim; opts.onInterim && opts.onInterim((segs.map(a => a[0]).join(' ') + ' ' + interim).trim());
+        if (!opts.hold && segs.length) { try { r.stop(); } catch {} } };
+      r.onerror = e => { const c = e.error || 'error'; if (c === 'no-speech' || c === 'aborted') return; done = true; clearTimeout(to); rej(c); };
+      r.onend = () => { if (done) return;
+        const keep = opts.hold ? opts.hold.down : (!segs.length && !heardAny && Date.now() - t0 < 12000 && restarts < 3);
+        if (keep) { restarts++; try { start(); } catch { finish(); } } else finish(); };
+      try { r.start(); } catch (e) { done = true; clearTimeout(to); rej('start-failed'); }
+    };
+    start();
+    if (opts.hold) opts.hold.stop = () => { opts.hold.down = false; try { r.stop(); } catch {} };
   });
 }
 // Fallback recorder: record + play back, then self-rate
@@ -152,13 +166,7 @@ const CONTR = { "i'm": 'i am', "you're": 'you are', "he's": 'he is', "she's": 's
 const NUMW = { '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '10': 'ten', '11': 'eleven', '12': 'twelve', '13': 'thirteen', '15': 'fifteen', '20': 'twenty', '30': 'thirty', '50': 'fifty', '100': 'hundred' };
 function norm(s) { return s.toLowerCase().replace(/[’‘]/g, "'").split(/\s+/).map(w => w.replace(/[^a-z0-9']/g, '')).filter(Boolean).map(w => CONTR[w] || NUMW[w] || w).join(' ').replace(/'/g, '').replace(/\bcan not\b/g, 'cannot').trim(); }
 const words = s => norm(s).split(' ').filter(Boolean);
-function scoreSpeech(target, alts) {
-  const tw = words(target); let best = null;
-  for (const a of alts) { const aw = words(a); const used = new Array(aw.length).fill(false); let j = 0;
-    const res = tw.map(w => { for (let k = j; k < aw.length; k++) if (!used[k] && (aw[k] === w || lev(aw[k], w) <= (w.length > 5 ? 1 : 0))) { used[k] = true; j = k + 1; return true; } return false; });
-    const pct = Math.round(100 * res.filter(Boolean).length / tw.length); if (!best || pct > best.pct) best = { pct, res, heard: a }; }
-  return best;
-}
+const scoreSpeech = (target, alts) => Score.score(target, alts); // exact words; formatting-only normalization
 function lev(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; }
 const shuffle = a => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -297,20 +305,30 @@ function micNote() {
 function sayWidget(box, target, done, opts = {}) {
   box.innerHTML = `<div class="target">${esc(target)} ${helpBtn(target)}${tx(target)}</div>${speedCtl()}
    <div class="row" style="justify-content:center;margin:12px 0"><button class="btn" id="play">🔊 Listen</button><button class="btn" id="loop">🔁 Repeat loop</button></div>
-   <div style="text-align:center"><button class="mic" id="mic" aria-label="Speak">🎤</button><div class="mut" id="micS">${srReady() ? T('Tap and say it', 'Toca y dilo') : T('Tap to record yourself', 'Toca para grabarte')}</div></div><div id="res"></div>`;
+   <div style="text-align:center"><button class="mic" id="mic" aria-label="Speak">🎤</button><div class="mut" id="micS">${srReady() ? T('Tap, or press and hold while you speak', 'Toca, o mantén presionado mientras hablas') : T('Tap to record yourself', 'Toca para grabarte')}</div></div><div id="res"></div>`;
   $('#play', box).onclick = () => speak(target); $('#loop', box).onclick = e => repeatLoop(target, e.target);
   if (opts.autoplay !== false) setTimeout(() => speak(target), 300);
-  $('#mic', box).onclick = async () => {
+  const micEl = $('#mic', box); let hold = null, pressT = 0, holdTimer = null, busy = false;
+  micEl.addEventListener('pointerdown', e => { if (busy || !srReady()) return; pressT = Date.now(); holdTimer = setTimeout(() => { hold = { down: true }; run(); }, 350); });
+  const up = () => { clearTimeout(holdTimer); if (hold && hold.down) { hold.stop ? hold.stop() : (hold.down = false); } };
+  micEl.addEventListener('pointerup', up); micEl.addEventListener('pointerleave', up); micEl.addEventListener('pointercancel', up);
+  micEl.oncontextmenu = e => e.preventDefault();
+  micEl.onclick = () => { if (hold || busy) return; clearTimeout(holdTimer); run(); };
+  const run = async () => {
+    busy = true; try { await runInner(); } finally { busy = false; hold = null; }
+  };
+  const runInner = async () => {
     const mic = $('#mic', box), res = $('#res', box);
     if (srReady()) {
       res.innerHTML = '';
       // iOS: request the mic from this tap first, release it, then start recognition
       if (navigator.mediaDevices?.getUserMedia) { try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }); st.getTracks().forEach(t => t.stop()); LS.set('eq.mic', 'granted'); }
         catch (e) { const code = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'not-allowed' : 'audio-capture'; if (code === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(code); selfRate(res, done, true); return; } }
-      mic.classList.add('live'); $('#micS', box).textContent = 'Listening… / Escuchando…';
-      try { const alts = await listen(); mic.classList.remove('live'); const sc = scoreSpeech(target, alts); showScore(res, target, sc, done); }
+      mic.classList.add('live'); $('#micS', box).textContent = hold ? 'Listening… release when done / Suelta al terminar' : 'Listening… / Escuchando…';
+      res.innerHTML = '<div class="fb info live-tx">🎧 …</div>';
+      try { const alts = await listen({ hold, onInterim: t => { const el = $('.live-tx', box); if (el) el.textContent = '🎧 ' + t; } }); mic.classList.remove('live'); const sc = scoreSpeech(target, alts); showScore(res, target, sc, done); }
       catch (err) { mic.classList.remove('live'); $('#micS', box).textContent = 'Tap and say it';
-        if (err === 'no-speech' || err === 'aborted') res.innerHTML = errBox('no-speech');
+        if (err === 'no-speech' || err === 'aborted' || err === 'no-match') res.innerHTML = errBox('no-speech');
         else { if (err === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(err === 'start-failed' ? 'service-not-allowed' : err); selfRate(res, done, true); } }
     } else {
       res.innerHTML = `<div class="fb info">📴 ${T('Speech scoring needs internet (or is not supported here). Record, listen, compare and rate yourself.', 'La evaluación de voz necesita internet. Grábate, escucha y califícate.')}</div>`;
