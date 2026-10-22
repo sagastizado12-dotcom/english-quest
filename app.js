@@ -51,7 +51,9 @@ function listen() {
     r.onresult = e => { done = true; res([...e.results[0]].map(a => a.transcript)); };
     r.onerror = e => { done = true; rej(e.error || 'error'); };
     r.onend = () => { if (!done) rej('no-speech'); };
-    try { r.start(); } catch (e) { rej('start-failed'); }
+    const to = setTimeout(() => { if (!done) { done = true; try { r.abort(); } catch {} rej('timeout'); } }, 9000);
+    r.addEventListener('end', () => clearTimeout(to));
+    try { r.start(); } catch (e) { done = true; rej('start-failed'); }
   });
 }
 // Fallback recorder: record + play back, then self-rate
@@ -222,7 +224,7 @@ function sayWidget(box, target, done, opts = {}) {
       mic.classList.add('live'); $('#micS', box).textContent = 'Listening…';
       try { const alts = await listen(); mic.classList.remove('live'); const sc = scoreSpeech(target, alts); showScore(res, target, sc, done); }
       catch (err) { mic.classList.remove('live'); $('#micS', box).textContent = 'Tap and say it';
-        if (err === 'network' || err === 'not-allowed' || err === 'service-not-allowed') { res.innerHTML = `<div class="fb info">${err === 'network' ? '📴 Speech scoring needs internet.' : '🎙️ Microphone or speech permission was blocked.'} ${T('Rate yourself instead:', 'Califícate tú mismo:')}</div>`; selfRate(res, done); }
+        if (['network', 'not-allowed', 'service-not-allowed', 'timeout', 'start-failed', 'audio-capture'].includes(err)) { res.innerHTML = `<div class="fb info">${err === 'network' || err === 'timeout' ? '📴 Speech scoring is not responding (it needs internet).' : '🎙️ Microphone or speech permission was blocked.'} ${T('Rate yourself instead:', 'Califícate tú mismo:')}</div>`; selfRate(res, done); }
         else res.innerHTML = `<div class="fb bad">${T("I didn't hear you. Try again, a little louder.", 'No te escuché. Intenta de nuevo.')}</div>`; }
     } else {
       res.innerHTML = `<div class="fb info">📴 ${T('Speech scoring needs internet (or is not supported here). Record, listen, compare and rate yourself.', 'La evaluación de voz necesita internet. Grábate, escucha y califícate.')}</div>`;
