@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#5b4bff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="English Quest">
+<meta name="description" content="Practice speaking, reading, writing and pronunciation in English. Works offline.">
+<title>English Quest</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="top"><button id="homeBtn" class="logo" aria-label="Home">⭐ English Quest</button><div id="stats"></div></header>
+<main id="app" aria-live="polite"></main>
+<nav id="tabs">
+ <a href="#/home" data-t="home">🏠<span>Home</span></a>
+ <a href="#/speak" data-t="speak">🎤<span>Speak</span></a>
+ <a href="#/pron" data-t="pron">👄<span>Sounds</span></a>
+ <a href="#/read" data-t="read">📖<span>Read</span></a>
+ <a href="#/write" data-t="write">✏️<span>Write</span></a>
+ <a href="#/more" data-t="more">☰<span>More</span></a>
+</nav>
+<div id="modal" hidden><div class="sheet"><button class="close" aria-label="Close">✕</button><div class="body"></div></div></div>
+<div id="toast"></div>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
