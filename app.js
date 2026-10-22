@@ -119,6 +119,34 @@ async function testMic(box) {
 document.addEventListener('click', e => { if (e.target.closest('[data-micask]')) askMic(); const t = e.target.closest('[data-mictest]'); if (t) testMic(t.nextElementSibling); });
 const micFirst = () => (LS.get('eq.micSeen', 0) && micState() === 'granted') ? '' : micCardHTML();
 
+/* ========== In-app browser detection (best effort) ========== */
+const UA = navigator.userAgent || '';
+const isIOS = /iPad|iPhone|iPod/.test(UA) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = navigator.standalone === true || matchMedia('(display-mode: standalone)').matches;
+const isInApp = /FBAN|FBAV|FB_IAB|Instagram|Line\/|WhatsApp|GSA\/|Snapchat|Twitter|LinkedInApp|MicroMessenger|TikTok|musical_ly|Pinterest/i.test(UA) || (isIOS && !isStandalone && !/Safari\//.test(UA));
+function inAppBanner() {
+  if (!isInApp) return '';
+  return `<div class="card" style="border:2px solid var(--warn);background:#f5a52422"><b style="font-size:18px">🧭 Open in Safari for the microphone<small class="esu">Abre en Safari para usar el micrófono</small></b>
+   <p style="margin:8px 0">It looks like you opened this link inside another app (Messages, WhatsApp, Facebook…). The microphone and speech scoring may not work here.<small class="esu">Parece que abriste el enlace dentro de otra app. El micrófono y la evaluación de voz pueden no funcionar aquí.</small></p>
+   <ol style="padding-left:20px;margin:6px 0"><li>Tap <b>Copy link</b>, open <b>Safari</b>, paste it in the address bar.<small class="esu">Toca Copiar enlace, abre Safari y pégalo en la barra de direcciones.</small></li>
+   <li>Or long-press the link → <b>Open in Safari</b>.<small class="esu">O mantén presionado el enlace → Abrir en Safari.</small></li>
+   <li>Or tap the <b>share ⬆️</b> or <b>compass 🧭</b> icon → <b>Open in Safari</b> (Android: ⋮ → Open in Chrome).<small class="esu">O toca el ícono de compartir ⬆️ o la brújula 🧭 → Abrir en Safari (Android: ⋮ → Abrir en Chrome).</small></li></ol>
+   <button class="btn pri full" data-copylink>🔗 Copy link<small class="esu">Copiar enlace</small></button>
+   <p class="mut">You can still use reading, writing and listening here.<small class="esu">Puedes seguir usando lectura, escritura y audio aquí.</small></p></div>`;
+}
+document.addEventListener('click', async e => { if (!e.target.closest('[data-copylink]')) return; const u = 'https://sagastizado12-dotcom.github.io/english-quest/' + location.hash;
+  try { await navigator.clipboard.writeText(u); toast('🔗 Copied / Copiado'); } catch { prompt('Copy this link / Copia este enlace:', u); } });
+// Bilingual speech error messages with fix steps
+const SR_ERR = {
+  'not-allowed': ['🎙️ Microphone permission was denied.', 'Se negó el permiso del micrófono.', isIOS ? 'Tap aA → Website Settings → Microphone → Allow, or Settings → Safari → Microphone → Allow. Then tap Try again.' : 'Tap the lock icon 🔒 → Permissions → Microphone → Allow. Then tap Try again.', isIOS ? 'Toca aA → Configuración del sitio web → Micrófono → Permitir, o Ajustes → Safari → Micrófono → Permitir. Luego toca Intentar de nuevo.' : 'Toca el candado 🔒 → Permisos → Micrófono → Permitir. Luego toca Intentar de nuevo.'],
+  'service-not-allowed': ['🗣️ Speech recognition is turned off or not allowed in this browser.', 'El reconocimiento de voz está apagado o no se permite en este navegador.', isIOS ? 'Turn on Settings → General → Keyboard → Enable Dictation, and allow Siri & Dictation (Settings → Siri). If you opened this from Messages or another app, open it in Safari.' : 'Use Chrome and check that voice typing is enabled. If you opened this inside another app, open it in Chrome.', isIOS ? 'Activa Ajustes → General → Teclado → Activar dictado y permite Siri y Dictado (Ajustes → Siri). Si lo abriste desde Mensajes u otra app, ábrelo en Safari.' : 'Usa Chrome y revisa que el dictado por voz esté activado. Si lo abriste dentro de otra app, ábrelo en Chrome.'],
+  'network': ['📴 Speech scoring needs internet.', 'La evaluación de voz necesita internet.', 'Check your Wi-Fi or data, or rate yourself below.', 'Revisa tu Wi-Fi o datos, o califícate abajo.'],
+  'timeout': ['📴 Speech scoring is not responding (it usually needs internet).', 'La evaluación de voz no responde (normalmente necesita internet).', 'Check your connection, or rate yourself below.', 'Revisa tu conexión, o califícate abajo.'],
+  'no-speech': ["🤫 I didn't hear anything.", 'No escuché nada.', 'Tap the mic, wait for the red button, then speak a little louder.', 'Toca el micrófono, espera el botón rojo y habla un poco más fuerte.'],
+  'audio-capture': ['🎙️ No microphone was found.', 'No se encontró un micrófono.', 'Check that no other app is using the microphone.', 'Revisa que ninguna otra app esté usando el micrófono.'],
+};
+const errBox = code => { const m = SR_ERR[code] || SR_ERR['service-not-allowed']; return `<div class="fb info" style="font-weight:500"><b>${m[0]}</b><small class="esu">${m[1]}</small><p style="margin:6px 0 0">${m[2]}<small class="esu">${m[3]}</small></p></div>`; };
+
 /* ========== Text utils & scoring ========== */
 const CONTR = { "i'm": 'i am', "you're": 'you are', "he's": 'he is', "she's": 'she is', "it's": 'it is', "we're": 'we are', "they're": 'they are', "don't": 'do not', "doesn't": 'does not', "didn't": 'did not', "can't": 'cannot', "won't": 'will not', "i'll": 'i will', "i've": 'i have', "let's": 'let us', "isn't": 'is not', "aren't": 'are not', "what's": 'what is', "o'clock": 'oclock' };
 const NUMW = { '1': 'one', '2': 'two', '3': 'three', '4': 'four', '5': 'five', '6': 'six', '7': 'seven', '8': 'eight', '9': 'nine', '10': 'ten', '11': 'eleven', '12': 'twelve', '13': 'thirteen', '15': 'fifteen', '20': 'twenty', '30': 'thirty', '50': 'fifty', '100': 'hundred' };
@@ -257,7 +285,7 @@ function home() {
 
 /* ========== SPEAKING ========== */
 function speakList() {
-  view(`<h1>🎤 ${U('Speaking', 'Hablar')}</h1>${skillHead('speak', ['Listen, then tap the mic and say it.', 'Escucha y luego toca el micrófono y repítelo.'])}${micNote()}${micFirst()}
+  view(`<h1>🎤 ${U('Speaking', 'Hablar')}</h1>${skillHead('speak', ['Listen, then tap the mic and say it.', 'Escucha y luego toca el micrófono y repítelo.'])}${inAppBanner()}${micNote()}${micFirst()}
   <h2>${U('Repeat after me', 'Repite después de mí')}</h2>${lessonList('speak', SPEAK, '🎤', 'speak')}<h2>💬 ${U('Role-plays', 'Diálogos')}</h2>${lessonList('speak', ROLEPLAYS, '💬', 'speak')}`);
 }
 function micNote() {
@@ -275,11 +303,15 @@ function sayWidget(box, target, done, opts = {}) {
   $('#mic', box).onclick = async () => {
     const mic = $('#mic', box), res = $('#res', box);
     if (srReady()) {
-      mic.classList.add('live'); $('#micS', box).textContent = 'Listening…';
+      res.innerHTML = '';
+      // iOS: request the mic from this tap first, release it, then start recognition
+      if (navigator.mediaDevices?.getUserMedia) { try { const st = await navigator.mediaDevices.getUserMedia({ audio: true }); st.getTracks().forEach(t => t.stop()); LS.set('eq.mic', 'granted'); }
+        catch (e) { const code = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'not-allowed' : 'audio-capture'; if (code === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(code); selfRate(res, done, true); return; } }
+      mic.classList.add('live'); $('#micS', box).textContent = 'Listening… / Escuchando…';
       try { const alts = await listen(); mic.classList.remove('live'); const sc = scoreSpeech(target, alts); showScore(res, target, sc, done); }
       catch (err) { mic.classList.remove('live'); $('#micS', box).textContent = 'Tap and say it';
-        if (['network', 'not-allowed', 'service-not-allowed', 'timeout', 'start-failed', 'audio-capture'].includes(err)) { res.innerHTML = `<div class="fb info">${err === 'network' || err === 'timeout' ? '📴 Speech scoring is not responding (it needs internet).' : '🎙️ Microphone or speech permission was blocked.'} ${T('Rate yourself instead:', 'Califícate tú mismo:')}</div>`; selfRate(res, done); }
-        else res.innerHTML = `<div class="fb bad">${T("I didn't hear you. Try again, a little louder.", 'No te escuché. Intenta de nuevo.')}</div>`; }
+        if (err === 'no-speech' || err === 'aborted') res.innerHTML = errBox('no-speech');
+        else { if (err === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(err === 'start-failed' ? 'service-not-allowed' : err); selfRate(res, done, true); } }
     } else {
       res.innerHTML = `<div class="fb info">📴 ${T('Speech scoring needs internet (or is not supported here). Record, listen, compare and rate yourself.', 'La evaluación de voz necesita internet. Grábate, escucha y califícate.')}</div>`;
       try { mic.classList.add('live'); $('#micS', box).textContent = 'Recording… (4s)'; const url = await recordClip(); mic.classList.remove('live'); $('#micS', box).textContent = 'Tap to record again';
@@ -289,8 +321,9 @@ function sayWidget(box, target, done, opts = {}) {
     }
   };
 }
-function selfRate(res, done) {
+function selfRate(res, done, retry) {
   const d = document.createElement('div'); d.className = 'row'; d.innerHTML = `<button class="btn ok grow">😀 Good</button><button class="btn grow">😐 Almost</button><button class="btn bad grow">🔁 Again</button>`;
+  if (retry) { const t = document.createElement('button'); t.className = 'btn full'; t.innerHTML = '🔁 Try again<small class="esu">Intentar de nuevo</small>'; t.onclick = () => { res.innerHTML = ''; res.closest('.card')?.querySelector('#mic')?.click(); }; res.appendChild(t); }
   const [g, a, b] = $$('button', d); g.onclick = () => done(true, 100, res); a.onclick = () => done(true, 70, res); b.onclick = () => done(false, 30, res); res.appendChild(d);
 }
 function showScore(res, target, sc, done) {
@@ -327,7 +360,7 @@ function speakLesson(id) {
 /* ========== PRONUNCIATION ========== */
 function pronList() {
   view(`<h1>👄 ${U('Sounds', 'Sonidos / Pronunciación')}</h1>${skillHead('pron', ['Sounds that Spanish speakers often find hard. Listen, choose, then say it.', 'Sonidos difíciles para hispanohablantes. Escucha, elige y repite.'])}
-  ${micFirst()}<div class="card"><b>🗣️ How do I say…?</b><div class="row" style="margin-top:8px"><input type="text" id="howIn" class="grow" placeholder="Type any word or sentence" style="flex:1"><button class="btn pri" id="howGo">Go</button></div></div>
+  ${inAppBanner()}${micFirst()}<div class="card"><b>🗣️ How do I say…?</b><div class="row" style="margin-top:8px"><input type="text" id="howIn" class="grow" placeholder="Type any word or sentence" style="flex:1"><button class="btn pri" id="howGo">Go</button></div></div>
   ${lessonList('pron', SOUNDS, '👄', 'pron')}`);
   const go = () => { const v = $('#howIn').value.trim(); if (v) howToSay(v); }; $('#howGo').onclick = go; $('#howIn').onkeydown = e => e.key === 'Enter' && go();
 }
