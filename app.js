@@ -13,9 +13,9 @@ const SKILLNAME = { speak: 'Speaking', read: 'Reading', write: 'Writing', pron: 
 const SKILLES = { speak: 'Hablar', read: 'Lectura', write: 'Escritura', pron: 'Pronunciación' };
 const SN = s => U(SKILLNAME[s], SKILLES[s]);
 const LVL = ['', 'A1', 'A2', 'B1', 'B1+'];
-function newProfile(name) { return { id: 'p' + Date.now().toString(36), name, xp: 0, xpLog: {}, streak: 0, best: 0, lastDay: null, goal: 50, skills: Object.fromEntries(SKILLS.map(s => [s, { lvl: 1, hist: [], correct: 0, total: 0 }])), done: {}, srs: {}, badges: {}, missed: {}, pairsOk: 0, created: today() }; }
+function newProfile(name) { return { id: 'p' + Date.now().toString(36), name, xp: 0, xpLog: {}, streak: 0, best: 0, lastDay: null, goal: 50, sgoal: 10, spoken: {}, sp: { days: {}, words: {} }, daily: {}, skills: Object.fromEntries(SKILLS.map(s => [s, { lvl: 1, hist: [], correct: 0, total: 0 }])), done: {}, srs: {}, badges: {}, missed: {}, pairsOk: 0, created: today() }; }
 let profiles = LS.get('eq.profiles', []), P = null;
-function loadProfile(id) { P = LS.get('eq.p.' + id, null); if (P) { LS.set('eq.current', id); for (const s of SKILLS) P.skills[s] ||= { lvl: 1, hist: [], correct: 0, total: 0 }; } }
+function loadProfile(id) { P = LS.get('eq.p.' + id, null); if (P) { LS.set('eq.current', id); for (const s of SKILLS) P.skills[s] ||= { lvl: 1, hist: [], correct: 0, total: 0 }; P.sgoal ||= 10; P.spoken ||= {}; P.sp ||= { days: {}, words: {} }; P.daily ||= {}; } }
 function save() { if (P) LS.set('eq.p.' + P.id, P); renderStats(); }
 function addProfile(name) { const p = newProfile(name || 'Learner'); profiles.push({ id: p.id, name: p.name }); LS.set('eq.profiles', profiles); LS.set('eq.p.' + p.id, p); loadProfile(p.id); }
 
@@ -279,9 +279,11 @@ function home() {
   const due = Object.values(P.srs).filter(c => c.due <= Date.now()).length;
   view(`<h1>Hi, ${esc(P.name)}! 👋</h1>${uiEs() ? '<div class="es">¡Hola! Practica un poco cada día.</div>' : ''}
   <div class="card"><div class="row"><span style="font-size:40px">${r[2]}</span><div class="grow"><b>${U(r[1], r[3])}</b><div class="mut">${P.xp} XP${nx ? ` · ${nx[0] - P.xp} to ${nx[1]}` : ''}</div></div><div style="text-align:center"><b style="font-size:24px">🔥${P.streak}</b><div class="mut">${U('day streak', 'días seguidos')}</div></div></div>
-   <p style="margin:10px 0 4px"><b>${U('Daily goal', 'Meta diaria')}</b> <span class="mut">${Math.min(td, P.goal)}/${P.goal} XP</span></p><div class="bar"><i style="width:${Math.min(100, 100 * td / P.goal)}%"></i></div></div>
-  <div class="grid2">
-   <a class="btn full hometile" href="#/speak">🎤<b>Speak</b>${uiEs() ? '<small class="esu">Hablar</small>' : ''}</a>
+   <p style="margin:10px 0 4px"><b>🎤 ${U('Daily speaking goal', 'Meta diaria de hablar')}</b> <span class="mut">${Math.min(P.spoken[today()] || 0, P.sgoal)}/${P.sgoal} ${U('phrases', 'frases')}</span></p><div class="bar"><i style="width:${Math.min(100, 100 * (P.spoken[today()] || 0) / P.sgoal)}%"></i></div>
+   <div class="mut" style="font-size:13px;margin-top:4px">⭐ ${uiEs() ? 'XP today / hoy' : 'XP today'}: ${td}/${P.goal}</div></div>
+  <a class="btn pri full hometile speaktile" href="#/speak">🎤<b>Speak</b>${uiEs() ? '<small class="esu">Hablar</small>' : ''}<span class="mut2">${Math.min(P.spoken[today()] || 0, P.sgoal)}/${P.sgoal} ${U('phrases today', 'frases hoy')}</span></a>
+  <a class="btn full" href="#/daily">🏆 ${U('Daily speaking challenge', 'Reto diario de hablar')} ${P.daily[today()] >= 80 ? '✅' : '<span class="chip">+20 XP</span>'}</a>
+  <div class="grid3">
    <a class="btn full hometile" href="#/pron">👄<b>Sounds</b>${uiEs() ? '<small class="esu">Sonidos</small>' : ''}</a>
    <a class="btn full hometile" href="#/read">📖<b>Read</b>${uiEs() ? '<small class="esu">Leer</small>' : ''}</a>
    <a class="btn full hometile" href="#/write">✏️<b>Write</b>${uiEs() ? '<small class="esu">Escribir</small>' : ''}</a></div>
@@ -294,7 +296,8 @@ function home() {
 /* ========== SPEAKING ========== */
 function speakList() {
   view(`<h1>🎤 ${U('Speaking', 'Hablar')}</h1>${skillHead('speak', ['Listen, then tap the mic and say it.', 'Escucha y luego toca el micrófono y repítelo.'])}${inAppBanner()}${micNote()}${micFirst()}
-  <h2>${U('Repeat after me', 'Repite después de mí')}</h2>${lessonList('speak', SPEAK, '🎤', 'speak')}<h2>💬 ${U('Role-plays', 'Diálogos')}</h2>${lessonList('speak', ROLEPLAYS, '💬', 'speak')}`);
+  <a class="btn pri full" href="#/daily" style="min-height:64px;font-size:19px">🏆 ${U('Daily speaking challenge', 'Reto diario de hablar')} ${P.daily[today()] >= 80 ? '✅' : ''}</a>${speakStats()}
+  <h2>${U('Speaking lessons', 'Lecciones de hablar')}</h2><p class="mut">${T('Repeat, answer questions and role-play. Pass = 80%.', 'Repite, responde preguntas y practica diálogos. Pasar = 80%.')}</p>${lessonList('speak', SPEAK, '🎤', 'speak')}<h2>💬 ${U('Role-plays', 'Diálogos')}</h2>${lessonList('speak', ROLEPLAYS, '💬', 'speak')}`);
 }
 function micNote() {
   if (!SR) return `<div class="fb info">ℹ️ ${T('Speech recognition is not available in this browser. You can still listen, record yourself, play it back and rate yourself. On iPhone, use Safari (iOS 14.5+) and turn on Siri & Dictation.', 'El reconocimiento de voz no está disponible aquí. Puedes escuchar, grabarte y calificarte. En iPhone usa Safari y activa Siri y Dictado.')}</div>`;
@@ -303,11 +306,16 @@ function micNote() {
 }
 // Generic "say it" practice widget; calls done(correct:boolean, pct)
 function sayWidget(box, target, done, opts = {}) {
-  box.innerHTML = `<div class="target">${esc(target)} ${helpBtn(target)}${tx(target)}</div>${speedCtl()}
-   <div class="row" style="justify-content:center;margin:12px 0"><button class="btn" id="play">🔊 Listen</button><button class="btn" id="loop">🔁 Repeat loop</button></div>
+  const acc = opts.accept; // answer mode: the app speaks a prompt; any accepted answer can pass (strict scoring per answer)
+  const say0 = acc ? opts.prompt : target;
+  box.innerHTML = (acc ? `<div class="row"><span style="font-size:30px">${opts.kind === 'q' ? '❓' : '🧑‍💼'}</span><b class="grow" style="font-size:20px">${esc(opts.prompt)}</b>${helpBtn(opts.prompt)}</div>${tx(opts.prompt)}
+     <p class="mut">${T('Answer out loud. Need help? Tap Ideas.', 'Responde en voz alta. ¿Necesitas ayuda? Toca Ideas.')}</p>
+     <details class="ideas"><summary>💡 ${U('Ideas', 'Ideas')}</summary>${acc.map(a => `<div class="row idea"><button class="say" data-say="${esc(a)}">🔊</button><span class="grow">${esc(a)}${oEs(a)}</span></div>`).join('')}</details>`
+    : `<div class="target">${esc(target)} ${helpBtn(target)}${tx(target)}</div>`) + `${speedCtl()}
+   <div class="row" style="justify-content:center;margin:12px 0"><button class="btn" id="play">🔊 ${acc ? U('Hear again', 'Escuchar otra vez') : 'Listen'}</button>${acc ? '' : '<button class="btn" id="loop">🔁 Repeat loop</button>'}</div>
    <div style="text-align:center"><button class="mic" id="mic" aria-label="Speak">🎤</button><div class="mut" id="micS">${srReady() ? T('Tap, or press and hold while you speak', 'Toca, o mantén presionado mientras hablas') : T('Tap to record yourself', 'Toca para grabarte')}</div></div><div id="res"></div>`;
-  $('#play', box).onclick = () => speak(target); $('#loop', box).onclick = e => repeatLoop(target, e.target);
-  if (opts.autoplay !== false) setTimeout(() => speak(target), 300);
+  $('#play', box).onclick = () => speak(say0); if (!acc) $('#loop', box).onclick = e => repeatLoop(target, e.target);
+  if (opts.autoplay !== false) setTimeout(() => speak(say0), 300);
   const micEl = $('#mic', box); let hold = null, pressT = 0, holdTimer = null, busy = false;
   micEl.addEventListener('pointerdown', e => { if (busy || !srReady()) return; pressT = Date.now(); holdTimer = setTimeout(() => { hold = { down: true }; run(); }, 350); });
   const up = () => { clearTimeout(holdTimer); if (hold && hold.down) { hold.stop ? hold.stop() : (hold.down = false); } };
@@ -326,14 +334,16 @@ function sayWidget(box, target, done, opts = {}) {
         catch (e) { const code = e && (e.name === 'NotAllowedError' || e.name === 'SecurityError') ? 'not-allowed' : 'audio-capture'; if (code === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(code); selfRate(res, done, true); return; } }
       mic.classList.add('live'); $('#micS', box).textContent = hold ? 'Listening… release when done / Suelta al terminar' : 'Listening… / Escuchando…';
       res.innerHTML = '<div class="fb info live-tx">🎧 …</div>';
-      try { const alts = await listen({ hold, onInterim: t => { const el = $('.live-tx', box); if (el) el.textContent = '🎧 ' + t; } }); mic.classList.remove('live'); const sc = scoreSpeech(target, alts); showScore(res, target, sc, done); }
+      try { const alts = await listen({ hold, onInterim: t => { const el = $('.live-tx', box); if (el) el.textContent = '🎧 ' + t; } }); mic.classList.remove('live'); let best = target, sc = acc ? null : scoreSpeech(target, alts);
+        if (acc) for (const a of acc) { const s2 = scoreSpeech(a, alts); if (!sc || s2.pct > sc.pct) { sc = s2; best = a; } }
+        showScore(res, best, sc, done); }
       catch (err) { mic.classList.remove('live'); $('#micS', box).textContent = 'Tap and say it';
-        if (err === 'no-speech' || err === 'aborted' || err === 'no-match') res.innerHTML = errBox('no-speech');
+        if (err === 'no-speech' || err === 'aborted' || err === 'no-match') { res.innerHTML = errBox('no-speech'); const t = document.createElement('button'); t.className = 'btn full'; t.innerHTML = '🔁 Try again<small class="esu">Intentar de nuevo</small>'; t.onclick = () => { res.innerHTML = ''; micEl.click(); }; res.appendChild(t); }
         else { if (err === 'not-allowed') LS.set('eq.mic', 'denied'); res.innerHTML = errBox(err === 'start-failed' ? 'service-not-allowed' : err); selfRate(res, done, true); } }
     } else {
       res.innerHTML = `<div class="fb info">📴 ${T('Speech scoring needs internet (or is not supported here). Record, listen, compare and rate yourself.', 'La evaluación de voz necesita internet. Grábate, escucha y califícate.')}</div>`;
       try { mic.classList.add('live'); $('#micS', box).textContent = 'Recording… (4s)'; const url = await recordClip(); mic.classList.remove('live'); $('#micS', box).textContent = 'Tap to record again';
-        res.insertAdjacentHTML('beforeend', `<div class="row"><audio controls src="${url}" style="width:100%"></audio><button class="btn sm grow" data-say="${esc(target)}">🔊 Model</button></div>`);
+        res.insertAdjacentHTML('beforeend', `<div class="row"><audio controls src="${url}" style="width:100%"></audio><button class="btn sm grow" data-say="${esc(acc ? acc[0] : target)}">🔊 Model</button></div>`);
       } catch { mic.classList.remove('live'); $('#micS', box).textContent = ''; res.insertAdjacentHTML('beforeend', `<p class="mut">${T('Recording is not available. Listen and say it out loud.', 'No se puede grabar. Escucha y dilo en voz alta.')}</p>`); }
       selfRate(res, done);
     }
@@ -342,7 +352,7 @@ function sayWidget(box, target, done, opts = {}) {
 function selfRate(res, done, retry) {
   const d = document.createElement('div'); d.className = 'row'; d.innerHTML = `<button class="btn ok grow">😀 Good</button><button class="btn grow">😐 Almost</button><button class="btn bad grow">🔁 Again</button>`;
   if (retry) { const t = document.createElement('button'); t.className = 'btn full'; t.innerHTML = '🔁 Try again<small class="esu">Intentar de nuevo</small>'; t.onclick = () => { res.innerHTML = ''; res.closest('.card')?.querySelector('#mic')?.click(); }; res.appendChild(t); }
-  const [g, a, b] = $$('button', d); g.onclick = () => done(true, 100, res); a.onclick = () => done(true, 70, res); b.onclick = () => done(false, 30, res); res.appendChild(d);
+  const [g, a, b] = $$('button', d); g.onclick = () => { spokenInc(); done(true, 100, res); }; a.onclick = () => done(true, 70, res); b.onclick = () => done(false, 30, res); res.appendChild(d);
 }
 function showScore(res, target, sc, done) {
   const tw = target.split(/\s+/); const missedW = [];
@@ -351,10 +361,49 @@ function showScore(res, target, sc, done) {
   res.innerHTML = `<div class="fb ${good ? 'ok' : 'bad'}"><div style="font-size:22px">${sc.pct}% ${good ? '🎉' : '💪'}</div><div style="font-size:20px">${hl}</div><div class="mut">I heard: “${esc(sc.heard)}”</div></div>
    ${missedW.length ? `<div class="card"><b>${T('Practice these words:', 'Practica estas palabras:')}</b>${missedW.map(w => { const L = SOUNDS.find(s => s.id === soundFor(w)); return `<div class="row" style="margin-top:6px"><span class="grow" style="font-size:19px">${esc(w)} <span class="mut">${esc(pronInfo(w).resp)}</span></span><button class="say" data-slow="${esc(w)}">🐢</button><button class="say" data-how="${esc(w)}">🗣️?</button>${L ? `<a class="chip" href="#/pron/${L.id}">👄 ${esc(L.title)}</a>` : ''}</div>`; }).join('')}</div>` : ''}`;
   missedW.forEach(w => missed('w:' + w.toLowerCase(), true));
+  recordSpeech(tw, sc); if (good) spokenInc();
   const d = document.createElement('div'); d.className = 'row';
   d.innerHTML = good ? `<button class="btn pri grow">Next ➜</button>` : `<button class="btn grow">🔁 Try again</button><button class="btn pri grow">Next ➜</button>`;
   const bs = $$('button', d); if (good) bs[0].onclick = () => done(true, sc.pct, res); else { bs[0].onclick = () => { res.innerHTML = ''; }; bs[1].onclick = () => done(false, sc.pct, res); }
   res.appendChild(d); if (good) beep('ok');
+}
+/* ---------- Speaking stats & daily goal ---------- */
+function recordSpeech(tw, sc) {
+  const d = P.sp.days[today()] ||= [0, 0]; d[0] += sc.pct; d[1]++;
+  tw.forEach((w, i) => { const k = w.toLowerCase().replace(/[^a-z']/g, ''); if (!k) return; const s = P.sp.words[k] ||= [0, 0]; s[1]++; if (sc.res[i] !== false) s[0]++; });
+  save();
+}
+function spokenInc() { const t = today(), b = P.spoken[t] || 0; P.spoken[t] = b + 1; if (b < P.sgoal && b + 1 >= P.sgoal) setTimeout(() => { toast('🎤 Daily speaking goal reached! / ¡Meta de hablar cumplida!'); beep('win'); }, 900); save(); }
+function weakWords(n = 8) { return Object.entries(P.sp.words).filter(([w, s]) => s[1] >= 2 && s[0] / s[1] < 0.8).sort((a, b) => a[1][0] / a[1][1] - b[1][0] / b[1][1] || b[1][1] - a[1][1]).slice(0, n); }
+function speakStats() {
+  const days = [...Array(14)].map((_, k) => { const d = new Date(Date.now() - (13 - k) * 864e5); const key = d.toISOString().slice(0, 10); const v = P.sp.days[key]; return [key, v ? Math.round(v[0] / v[1]) : null, v ? v[1] : 0]; });
+  const all = Object.values(P.sp.days).reduce((a, v) => [a[0] + v[0], a[1] + v[1]], [0, 0]); const avg = all[1] ? Math.round(all[0] / all[1]) : 0;
+  const bars = days.map((d, k) => d[1] == null ? '' : `<rect x="${k * 22 + 3}" y="${100 - d[1]}" width="16" height="${d[1]}" rx="3" fill="${d[1] >= 80 ? '#22a06b' : '#e8a33d'}"><title>${d[0]}: ${d[1]}% (${d[2]})</title></rect>`).join('');
+  const ww = weakWords();
+  return `<div class="card" id="spStats"><div class="row"><b class="grow">📊 ${U('Speaking accuracy', 'Precisión al hablar')}</b><span class="mut">${all[1]} ${U('tries', 'intentos')} · ${avg}%</span></div>
+   <svg class="chart" viewBox="0 0 308 104" style="height:80px"><line x1="0" x2="308" y1="20" y2="20" stroke="#22a06b" stroke-dasharray="4"/>${bars}</svg><div class="mut" style="font-size:12px">${T('Last 14 days · green line = 80% pass', 'Últimos 14 días · línea verde = 80% para pasar')}</div>
+   ${ww.length ? `<b style="display:block;margin-top:8px">🎯 ${U('Words to practice', 'Palabras para practicar')}</b>${ww.map(([w, s]) => `<div class="row" style="margin-top:4px"><span class="grow" style="font-size:18px">${esc(w)} <span class="mut">${Math.round(100 * s[0] / s[1])}% (${s[0]}/${s[1]})</span></span><button class="say" data-say="${esc(w)}">🔊</button><button class="say" data-slow="${esc(w)}">🐢</button><button class="say" data-how="${esc(w)}">🗣️?</button></div>`).join('')}` : `<p class="mut">${T('Practice a few lessons to see which words need work.', 'Practica algunas lecciones para ver qué palabras mejorar.')}</p>`}</div>`;
+}
+// Daily speaking challenge: 6 mixed items picked by date from unlocked lessons
+function dailyItems() {
+  const lv = P.skills.speak.lvl, pool = SPEAK.filter(l => l.lvl <= lv).flatMap(l => l.items);
+  let seed = [...today()].reduce((a, c) => a * 31 + c.charCodeAt(0) >>> 0, 7); const rnd = () => (seed = seed * 1103515245 + 12345 >>> 0) / 4294967296;
+  const reps = pool.filter(Array.isArray), asks = pool.filter(x => !Array.isArray(x)); const pick = (arr, n) => { const a = [...arr], o = []; while (o.length < n && a.length) o.push(a.splice(Math.floor(rnd() * a.length), 1)[0]); return o; };
+  return [...pick(reps, 3), ...pick(asks, 3)];
+}
+function itemWidget(box, it, done) {
+  if (Array.isArray(it)) return sayWidget(box, it[0], done);
+  const p = it.q || it.t; sayWidget(box, it.a[0][0], done, { accept: it.a.map(a => a[0]), prompt: p[0], kind: it.q ? 'q' : 't' });
+}
+const itemKey = it => Array.isArray(it) ? it[0] : (it.q || it.t)[0];
+function dailyChallenge() {
+  const items = dailyItems(), S = Session('speak', P.skills.speak.lvl, 'daily'); let i = 0;
+  const step = () => {
+    if (i >= items.length) { const r = S.finish(); const t = today(); const first = P.daily[t] == null || P.daily[t] < 80; P.daily[t] = Math.max(P.daily[t] || 0, r.pct);
+      if (r.pct >= 80 && first) { addXP(20); toast('🏆 Daily challenge complete! +20 XP'); } save(); return endScreen(r, '#/speak', 'Daily challenge done! / ¡Reto diario completo!'); }
+    const it = items[i]; view(`<a href="#/speak" class="mut">← Speaking</a><h1>🏆 ${U('Daily speaking challenge', 'Reto diario de hablar')}</h1><p class="mut">${i + 1} / ${items.length} · ${Array.isArray(it) ? U('Repeat after me', 'Repite después de mí') : it.q ? U('Answer the question', 'Responde la pregunta') : U('Role-play', 'Diálogo')}</p><div class="card" id="w"></div>`);
+    itemWidget($('#w'), it, (ok, pct, el) => { S.hit(ok, el); missed('s:' + itemKey(it), !ok); i++; setTimeout(step, ok ? 700 : 300); });
+  }; step();
 }
 function speakLesson(id) {
   const L = SPEAK.find(x => x.id === id), R = ROLEPLAYS.find(x => x.id === id); const X = L || R; if (!X) return speakList();
@@ -362,15 +411,12 @@ function speakLesson(id) {
   const queue = L ? [...L.items] : null; let reQ = new Set();
   const step = () => {
     if (L) { if (i >= queue.length) return endScreen(S.finish(), '#/speak');
-      const t = queue[i]; view(`<a href="#/speak" class="mut">← Speaking</a><h1>${U(L.title, esOf(L.title))}</h1><p class="mut">${i + 1} / ${queue.length}</p><div class="card" id="w"></div>`);
-      sayWidget($('#w'), t, (ok, pct, el) => { S.hit(ok, el); missed('s:' + t, !ok); if (!ok && !reQ.has(t)) { reQ.add(t); queue.push(t); } i++; setTimeout(step, ok ? 700 : 300); });
+      const t = queue[i], k = itemKey(t); view(`<a href="#/speak" class="mut">← Speaking</a><h1>${U(L.title, esOf(L.title))}</h1><p class="mut">${i + 1} / ${queue.length} · ${Array.isArray(t) ? U('Repeat after me', 'Repite después de mí') : t.q ? U('Answer the question', 'Responde la pregunta') : U('Role-play', 'Diálogo')}</p><div class="bar"><i style="width:${100 * i / queue.length}%"></i></div><div class="card" id="w"></div>`);
+      itemWidget($('#w'), t, (ok, pct, el) => { S.hit(ok, el); missed('s:' + k, !ok); if (!ok && !reQ.has(k)) { reQ.add(k); queue.push(t); } i++; setTimeout(step, ok ? 700 : 300); });
     } else { if (i >= R.turns.length) return endScreen(S.finish(), '#/speak', 'Conversation complete!');
       const tn = R.turns[i]; view(`<a href="#/speak" class="mut">← Speaking</a><h1>💬 ${U(R.title, esOf(R.title))}</h1><p class="mut">${i + 1} / ${R.turns.length}</p>
-        <div class="card"><div class="row"><span style="font-size:30px">🧑‍💼</span><b class="grow" style="font-size:20px">${esc(tn.app)}</b><button class="say" data-say="${esc(tn.app)}">🔊</button>${helpBtn(tn.app)}</div>${tx(tn.app)}</div>
-        <p>${T('Choose a reply, then say it:', 'Elige una respuesta y dila:')}</p>${optTog()}${tn.replies.map((r, k) => `<button class="btn full" data-rep="${k}" style="flex-direction:column">${esc(r)}${oEs(r)}</button>`).join('')}<div class="card" id="w" hidden></div>`);
-      setTimeout(() => speak(tn.app), 300);
-      $$('[data-rep]').forEach(b => b.onclick = () => { $$('[data-rep]').forEach(x => x.classList.toggle('sel', x === b)); const w = $('#w'); w.hidden = false;
-        sayWidget(w, tn.replies[+b.dataset.rep], (ok, pct, el) => { S.hit(ok, el); i++; setTimeout(step, 700); }, { autoplay: true }); w.scrollIntoView({ behavior: 'smooth' }); });
+        ${R.turns.slice(0, i).map(p => `<div class="mut" style="font-size:14px">🧑‍💼 ${esc(p.app)}</div>`).join('')}<div class="card" id="w"></div>`);
+      sayWidget($('#w'), tn.replies[0], (ok, pct, el) => { S.hit(ok, el); i++; setTimeout(step, 700); }, { accept: tn.replies, prompt: tn.app, kind: 't' });
     }
   }; step();
 }
@@ -534,7 +580,7 @@ function progress() {
   const acc = SKILLS.map(s => { const k = P.skills[s]; return [s, k.total ? Math.round(100 * k.correct / k.total) : null, k]; });
   const rated = acc.filter(a => a[1] != null).sort((a, b) => b[1] - a[1]);
   const weak = Object.entries(P.missed).sort((a, b) => b[1] - a[1]).slice(0, 6);
-  view(`<h1>📈 ${U('Progress', 'Progreso')}</h1><div class="card"><b>XP – last 14 days</b><svg class="chart" viewBox="0 0 312 150">${bars}<line x1="0" x2="312" y1="${goalY}" y2="${goalY}" stroke="var(--warn)" stroke-dasharray="4"/></svg><div class="mut">Dashed line = daily goal (${P.goal} XP) · Total ${P.xp} XP · Best streak ${P.best} days</div></div>
+  view(`<h1>📈 ${U('Progress', 'Progreso')}</h1>${speakStats()}<div class="card"><b>XP – last 14 days</b><svg class="chart" viewBox="0 0 312 150">${bars}<line x1="0" x2="312" y1="${goalY}" y2="${goalY}" stroke="var(--warn)" stroke-dasharray="4"/></svg><div class="mut">Dashed line = daily goal (${P.goal} XP) · Total ${P.xp} XP · Best streak ${P.best} days</div></div>
    <div class="card"><b>Skills</b>${acc.map(([s, a, k]) => `<div style="margin:8px 0"><div class="row"><span class="grow">${SN(s)} · ${LVL[k.lvl]}</span><span class="mut">${a == null ? '—' : a + '%'} · ${k.total} answers</span></div><div class="bar"><i style="width:${a || 0}%"></i></div></div>`).join('')}
    ${rated.length ? `<p>💪 Strongest: <b>${SN(rated[0][0])}</b>${rated.length > 1 ? ` · 🎯 Needs work: <b>${SN(rated[rated.length - 1][0])}</b>` : ''}</p>` : '<p class="mut">Do some lessons to see strengths.</p>'}</div>
    ${weak.length ? `<div class="card"><b>🔁 Review these (missed most)</b>${weak.map(([k, n]) => { const t = k.slice(2); return `<div class="row" style="margin-top:6px"><span class="grow">${esc(t)}</span><span class="chip">×${n}</span>${k[0] !== 'r' ? `<button class="say" data-slow="${esc(t)}">🐢</button>` : ''}</div>`; }).join('')}</div>` : ''}`);
@@ -551,6 +597,7 @@ function more() {
    <div style="padding:8px 0;border-bottom:1px solid var(--line)"><div>🇸🇻 ${U('Spanish translations', 'Traducciones al español')}</div><div class="row" style="margin-top:6px">${[['always', 'Always show', 'Siempre'], ['tap', 'Tap to show', 'Tocar para ver'], ['off', 'Off', 'Apagado']].map(([v, en, es]) => `<button class="btn sm grow ${SET.tr === v ? 'sel' : ''}" data-trm="${v}" style="flex-direction:column;gap:0">${esc(en)}<small class="esu">${es}</small></button>`).join('')}</div></div>
    <label class="switch"><span>🌙 ${U('Dark mode', 'Modo oscuro')}</span><input type="checkbox" id="sTh" ${SET.theme === 'dark' ? 'checked' : ''}></label>
    <label class="switch"><span>🔔 ${U('Sounds & effects', 'Sonidos y efectos')}</span><input type="checkbox" id="sSo" ${SET.sound ? 'checked' : ''}></label>
+   <label class="switch"><span>🎤 ${U('Daily speaking goal (phrases)', 'Meta de hablar (frases)')}</span><select id="sSg" style="width:110px">${[5, 10, 15, 20, 30].map(g => `<option ${g === P.sgoal ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
    <label class="switch"><span>🎯 ${U('Daily goal (XP)', 'Meta diaria')}</span><select id="sGo" style="width:110px">${[20, 30, 50, 80, 120, 200].map(g => `<option ${g === P.goal ? 'selected' : ''}>${g}</option>`).join('')}</select></label>
    <label class="switch"><span>🗣️ ${U('Voice speed', 'Velocidad de voz')}</span><input type="range" id="sRa" min="0.5" max="1.2" step="0.1" value="${SET.rate}" style="width:140px"></label></div>
   ${micCardHTML()}<div class="card"><b>📤 ${U('Share English Quest', 'Compartir')}</b><p class="mut">Scan to open on another phone. Each person keeps their own progress on their device.</p>
@@ -566,7 +613,7 @@ function more() {
   $$('[data-trm]').forEach(b => b.onclick = () => { SET.tr = b.dataset.trm; saveSet(); renderNav(); more(); });
   $('#sTh').onchange = e => { SET.theme = e.target.checked ? 'dark' : 'light'; saveSet(); applyTheme(); };
   $('#sSo').onchange = e => { SET.sound = e.target.checked; saveSet(); };
-  $('#sGo').onchange = e => { P.goal = +e.target.value; save(); };
+  $('#sGo').onchange = e => { P.goal = +e.target.value; save(); }; $('#sSg').onchange = e => { P.sgoal = +e.target.value; save(); };
   $('#sRa').onchange = e => { SET.rate = +e.target.value; saveSet(); speak('This is my speed'); };
   $('#share').onclick = async () => { const data = { title: 'English Quest', text: 'Learn English with me! 🇺🇸⭐', url: LIVE };
     if (navigator.share) { try { await navigator.share(data); return; } catch (e) { if (e.name === 'AbortError') return; } }
@@ -591,8 +638,8 @@ function route() {
   closeModal(); loopOn = false; if ('speechSynthesis' in window) speechSynthesis.cancel();
   if (!P) { $('#tabs').hidden = true; return welcome(); } $('#tabs').hidden = false;
   const [, a, b] = (location.hash || '#/home').split('/');
-  $$('#tabs a').forEach(x => x.classList.toggle('on', x.dataset.t === a));
-  ({ home, speak: () => b ? speakLesson(b) : speakList(), pron: () => b ? pronLesson(b) : pronList(), read: () => b ? readLesson(b) : readList(), write: () => b ? writeLesson(b) : writeList(), cards, progress, badges, more }[a] || home)();
+  $$('#tabs a').forEach(x => x.classList.toggle('on', x.dataset.t === (a === 'daily' ? 'speak' : a)));
+  ({ home, daily: dailyChallenge, speak: () => b ? speakLesson(b) : speakList(), pron: () => b ? pronLesson(b) : pronList(), read: () => b ? readLesson(b) : readList(), write: () => b ? writeLesson(b) : writeList(), cards, progress, badges, more }[a] || home)();
 }
 applyTheme(); renderNav(); const cur = LS.get('eq.current', null); if (cur) loadProfile(cur); if (!P && profiles[0]) loadProfile(profiles[0].id);
 renderStats(); window.addEventListener('hashchange', route); route();

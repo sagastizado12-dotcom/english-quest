@@ -238,17 +238,7 @@ window.PASSAGES = [
 ];
 
 // Speaking lessons (repeat after me), levels 1..4
-window.SPEAK = [
- {id:'s1',lvl:1,title:'Hello!',items:['Hello','Good morning','Thank you','My name is Sam','Nice to meet you']},
- {id:'s2',lvl:1,title:'Numbers & time',items:['One, two, three','It is seven o\'clock','I am twenty years old','See you tomorrow']},
- {id:'s3',lvl:1,title:'Family',items:['This is my mother','I have one brother','My family is big','I love my family']},
- {id:'s4',lvl:2,title:'Food',items:['I would like some water, please','Can I have the menu?','The soup is delicious','I am hungry']},
- {id:'s5',lvl:2,title:'Travel',items:['Where is the bus station?','Turn left at the corner','How much is the ticket?','The hotel is near the beach']},
- {id:'s6',lvl:3,title:'Work',items:['I have a meeting at three','Can you help me with this?','I finished the report yesterday','My schedule changes every week']},
- {id:'s7',lvl:3,title:'Health',items:['I have a headache and a fever','I need to make an appointment','Take this medicine twice a day']},
- {id:'s8',lvl:4,title:'Opinions',items:['I think practice is very important','In my opinion, the weather is better in the morning','Although it was difficult, I enjoyed it','I would rather walk than take the bus']},
-];
-
+// SPEAK lessons live in speak.js
 // Role-plays: app line, then suggested replies (any is fine; first is best)
 window.ROLEPLAYS = [
  {id:'d1',lvl:1,title:'Introduce yourself',turns:[

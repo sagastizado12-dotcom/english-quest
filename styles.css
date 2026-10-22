@@ -73,3 +73,8 @@ nav#tabs a{font-size:20px;padding-top:6px}
 nav#tabs a{min-width:0;overflow:hidden}nav#tabs a span,nav#tabs a .esn{overflow-wrap:anywhere}
 .grid2>*{min-width:0}
 .mic{touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.grid3>*{min-width:0}
+.grid3 .hometile{min-height:84px;font-size:15px}.grid3 .hometile b{font-size:15px}
+.speaktile{min-height:150px!important;font-size:46px;margin-bottom:8px}.speaktile b{font-size:26px!important}.speaktile .esu{color:inherit;opacity:.9}
+.speaktile .mut2{font-size:14px;opacity:.9;font-weight:600}
+.ideas{margin:8px 0}.ideas summary{cursor:pointer;font-weight:600;padding:6px 0}.ideas .idea{margin:4px 0}
