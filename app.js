@@ -274,7 +274,7 @@ function home() {
    <p style="margin:10px 0 4px"><b>${U('Daily goal', 'Meta diaria')}</b> <span class="mut">${Math.min(td, P.goal)}/${P.goal} XP</span></p><div class="bar"><i style="width:${Math.min(100, 100 * td / P.goal)}%"></i></div></div>
   <div class="grid2">
    <a class="btn full hometile" href="#/speak">🎤<b>Speak</b>${uiEs() ? '<small class="esu">Hablar</small>' : ''}</a>
-   <a class="btn full hometile" href="#/pron">👄<b>Sounds</b>${uiEs() ? '<small class="esu">Sonidos / Pronunciación</small>' : ''}</a>
+   <a class="btn full hometile" href="#/pron">👄<b>Sounds</b>${uiEs() ? '<small class="esu">Sonidos</small>' : ''}</a>
    <a class="btn full hometile" href="#/read">📖<b>Read</b>${uiEs() ? '<small class="esu">Leer</small>' : ''}</a>
    <a class="btn full hometile" href="#/write">✏️<b>Write</b>${uiEs() ? '<small class="esu">Escribir</small>' : ''}</a></div>
   <a class="btn pri full" href="#/cards">🃏 ${U('Flashcards', 'Tarjetas')} ${due ? `<span class="chip">${due} due</span>` : ''}</a>
