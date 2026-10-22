@@ -245,10 +245,10 @@ function home() {
   <div class="card"><div class="row"><span style="font-size:40px">${r[2]}</span><div class="grow"><b>${U(r[1], r[3])}</b><div class="mut">${P.xp} XP${nx ? ` · ${nx[0] - P.xp} to ${nx[1]}` : ''}</div></div><div style="text-align:center"><b style="font-size:24px">🔥${P.streak}</b><div class="mut">${U('day streak', 'días seguidos')}</div></div></div>
    <p style="margin:10px 0 4px"><b>${U('Daily goal', 'Meta diaria')}</b> <span class="mut">${Math.min(td, P.goal)}/${P.goal} XP</span></p><div class="bar"><i style="width:${Math.min(100, 100 * td / P.goal)}%"></i></div></div>
   <div class="grid2">
-   <a class="btn full" href="#/speak" style="flex-direction:column;min-height:96px">🎤<span>Speak</span>${uiEs() ? '<small class="esu">Hablar</small>' : ''}</a>
-   <a class="btn full" href="#/pron" style="flex-direction:column;min-height:96px">👄<span>Sounds</span>${uiEs() ? '<small class="esu">Sonidos / Pronunciación</small>' : ''}</a>
-   <a class="btn full" href="#/read" style="flex-direction:column;min-height:96px">📖<span>Read</span>${uiEs() ? '<small class="esu">Leer</small>' : ''}</a>
-   <a class="btn full" href="#/write" style="flex-direction:column;min-height:96px">✏️<span>Write</span>${uiEs() ? '<small class="esu">Escribir</small>' : ''}</a></div>
+   <a class="btn full hometile" href="#/speak">🎤<b>Speak</b>${uiEs() ? '<small class="esu">Hablar</small>' : ''}</a>
+   <a class="btn full hometile" href="#/pron">👄<b>Sounds</b>${uiEs() ? '<small class="esu">Sonidos / Pronunciación</small>' : ''}</a>
+   <a class="btn full hometile" href="#/read">📖<b>Read</b>${uiEs() ? '<small class="esu">Leer</small>' : ''}</a>
+   <a class="btn full hometile" href="#/write">✏️<b>Write</b>${uiEs() ? '<small class="esu">Escribir</small>' : ''}</a></div>
   <a class="btn pri full" href="#/cards">🃏 ${U('Flashcards', 'Tarjetas')} ${due ? `<span class="chip">${due} due</span>` : ''}</a>
   <h2>${U('Your skills', 'Tus habilidades')}</h2><div class="card">${SKILLS.map(s => { const k = P.skills[s], acc = k.total ? Math.round(100 * k.correct / k.total) : 0; return `<div style="margin:8px 0"><div class="row"><span class="grow">${SN(s)} <span class="chip">${LVL[k.lvl]}</span></span><span class="mut">${acc}%</span></div><div class="bar"><i style="width:${acc}%"></i></div></div>`; }).join('')}</div>
   <div class="row"><a class="btn grow" href="#/progress">📈 ${U('Progress', 'Progreso')}</a><a class="btn grow" href="#/badges">🏅 ${U('Badges', 'Insignias')}</a></div>

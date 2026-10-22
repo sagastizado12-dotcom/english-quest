@@ -64,3 +64,11 @@ nav#tabs a .esn{display:block;font-size:9.5px;font-weight:500;color:var(--mut);l
 nav#tabs a{font-size:20px;padding-top:6px}
 .btn .esu,.btn .es-t{text-align:center}
 .btn{flex-wrap:wrap}.btn .esu{flex-basis:100%;margin-top:0}.btn.pri .esu,.btn.ok .esu,.btn.bad .esu,.btn.right .esu,.btn.wrong .esu,.btn.right .es-t,.btn.wrong .es-t{color:#ffffffcc}
+/* Bilingual layout fixes: column buttons never wrap into side columns */
+.btn{min-width:0;max-width:100%;overflow-wrap:anywhere;text-align:center}
+.btn[style*="column"],.hometile{flex-wrap:nowrap!important}
+.hometile{flex-direction:column;justify-content:center;align-items:center;gap:2px;min-height:100px;padding:10px 6px}
+.hometile b{font-size:17px}.hometile .esu{flex-basis:auto;position:static;white-space:normal;font-size:13px}
+.esu{white-space:normal;overflow-wrap:anywhere}
+nav#tabs a{min-width:0;overflow:hidden}nav#tabs a span,nav#tabs a .esn{overflow-wrap:anywhere}
+.grid2>*{min-width:0}
