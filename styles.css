@@ -53,3 +53,14 @@ textarea{min-height:110px}
 .switch input{width:26px;height:26px}
 [hidden]{display:none!important}
 a.btn,a.chip{text-decoration:none;color:inherit}a.btn.pri{color:#fff}
+.esu{display:block;font-size:12px;font-weight:500;color:var(--mut);line-height:1.2;margin-top:1px}
+h1 .esu{font-size:14px}
+.es-t{display:block;font-size:14px;font-weight:500;color:var(--mut);line-height:1.3;margin-top:2px}
+.target .es-t{font-size:16px;font-weight:500}
+.passage .sn{display:inline}.passage .es-t{font-size:15px;margin:0 0 6px}
+.estog-w{display:inline}.estog{border:0;background:none;font-size:15px;padding:2px 4px;min-width:32px;min-height:32px;vertical-align:middle;opacity:.8}
+.estog-w .es-t:not([hidden]){display:block}
+nav#tabs a .esn{display:block;font-size:9.5px;font-weight:500;color:var(--mut);line-height:1.1}
+nav#tabs a{font-size:20px;padding-top:6px}
+.btn .esu,.btn .es-t{text-align:center}
+.btn{flex-wrap:wrap}.btn .esu{flex-basis:100%;margin-top:0}.btn.pri .esu,.btn.ok .esu,.btn.bad .esu,.btn.right .esu,.btn.wrong .esu,.btn.right .es-t,.btn.wrong .es-t{color:#ffffffcc}
